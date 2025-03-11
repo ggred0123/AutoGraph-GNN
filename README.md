@@ -1,7 +1,8 @@
 # AutoGraph-GNN
 # AutoGraph: LLM 기반 자동 그래프 구성 프레임워크
 
-이 문서는 논문 "An Automatic Graph Construction Framework based on Large Language Models for Recommendation"을 기반으로 구현된 AutoGraph 프레임워크의 핵심 개념과 구현 방법에 대해 설명합니다.
+이 문서는 논문 "An Automatic Graph Construction Framework based on Large Language Models for Recommendation"을 기반으로 구현된 AutoGraph 프레임워크의 핵심 개념과 구현 방법에 대해 설명합니다. 
+pdf link https://arxiv.org/abs/2412.18241
 
 ## 1. 개요
 
