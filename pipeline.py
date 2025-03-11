@@ -64,7 +64,7 @@ class AutoGraphPipeline:
         )
     
     # 의미 벡터 생성 단계
-    def generate_semantic_vectors(self, user_profile, user_histories, item_attributes):
+    def generate_semantic_vectors(self, user_profiles, user_histories, item_attributes):
         """
         의미 벡터 생성
         """
@@ -73,8 +73,13 @@ class AutoGraphPipeline:
         
         item_prompts = self.semantic_generator.generate_item_prompts(item_attributes)
         
-        user_vectors = self.semantic_generator.generate_vectors(user_prompts)
-        item_vectors = self.semantic_generator.generate_vectors(item_prompts)
+        user_vectors = self.semantic_generator.generate_user_embeddings(
+            user_profiles, self.interactions_df, item_attributes, 
+            method='weighted', batch_size=16
+        )
+        item_vectors = self.semantic_generator.generate_book_embeddings(
+        item_attributes, batch_size=16, combine_method='concat'
+    )
         
         return user_vectors, item_vectors
     
