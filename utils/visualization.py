@@ -248,3 +248,156 @@ def visualize_graph_construction(hidden_vectors, codebooks, indices_per_level, n
     plt.tight_layout()
     plt.savefig('graph_construction_visualization.png', dpi=300)
     plt.show()
+
+import networkx as nx
+import matplotlib.pyplot as plt
+
+def visualize_user_item_graph(node_features, edge_indices, users_df, books_df, filename="user_item_graph.png"):
+    """
+    사용자-책 그래프를 시각화하는 함수입니다.
+    
+    Args:
+        node_features (dict): 노드 특성 딕셔너리 (여기서는 사용하지 않음)
+        edge_indices (dict): 에지 인덱스 딕셔너리, 'user_item' 키를 사용
+        users_df (pd.DataFrame): 사용자 정보 DataFrame (컬럼 'user_id' 포함, 1-indexed)
+        books_df (pd.DataFrame): 책 정보 DataFrame (컬럼 'book_id' 포함, 1-indexed)
+        filename (str): 저장할 파일 이름
+    """
+    # 'user_item' 에지: shape=(2, num_edges)
+    user_item_edges = edge_indices.get('user_item')
+    if user_item_edges is None:
+        raise ValueError("edge_indices에 'user_item' 키가 없습니다.")
+    
+    # Tensor에서 numpy 배열로 변환
+    user_item_edges = user_item_edges.cpu().numpy()
+    
+    G = nx.Graph()
+    
+    # 사용자 노드 추가 (bipartite=0)
+    num_users = users_df.shape[0]
+    for i in range(num_users):
+        # user_id는 1-indexed라고 가정
+        user_id = users_df.iloc[i].get('user_id', i+1)
+        G.add_node(f"user_{user_id}", bipartite=0)
+    
+    # 책 노드 추가 (bipartite=1)
+    num_books = books_df.shape[0]
+    for j in range(num_books):
+        # book_id도 1-indexed라고 가정
+        book_id = books_df.iloc[j].get('book_id', j+1)
+        G.add_node(f"book_{book_id}", bipartite=1)
+    
+    # 사용자-책 에지 추가
+    num_edges = user_item_edges.shape[1]
+    for k in range(num_edges):
+        # edge_indices에 저장된 값이 1-indexed라고 가정하므로, iloc에서 접근할 때는 1을 빼줍니다.
+        u_idx = int(user_item_edges[0, k])
+        b_idx = int(user_item_edges[1, k])
+        
+        user_id = users_df.iloc[u_idx - 1].get('user_id', u_idx)
+        book_id = books_df.iloc[b_idx - 1].get('book_id', b_idx)
+        
+        G.add_edge(f"user_{user_id}", f"book_{book_id}")
+    
+    # 이분 그래프 레이아웃 계산 (bipartite_layout 사용)
+    pos = nx.bipartite_layout(G, nodes=[f"user_{users_df.iloc[i].get('user_id', i+1)}" for i in range(num_users)])
+    
+    plt.figure(figsize=(12, 8))
+    nx.draw(G, pos, with_labels=True, node_color=["lightblue" if "user" in n else "lightgreen" for n in G.nodes()],
+            node_size=500, font_size=8, edge_color="gray")
+    plt.title("User-Book Graph")
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close()
+
+def visualize_full_graph(node_features, edge_indices, users_df, books_df, user_vq, item_vq, filename="full_graph.png"):
+    """
+    전체 그래프 시각화: 사용자, 도서, 사용자 latent factor, 도서 latent factor를 모두 포함합니다.
+    
+    Args:
+        node_features (dict): {'user': ..., 'item': ..., 'user_factor': ..., 'item_factor': ...}
+        edge_indices (dict): {'user_item': ..., 'user_factor': ..., 'item_factor': ...}
+        users_df (pd.DataFrame): 사용자 정보 (컬럼 'user_id' 존재, 1-indexed)
+        books_df (pd.DataFrame): 도서 정보 (컬럼 'book_id' 존재, 1-indexed)
+        user_vq (ResidualVectorQuantizer): 사용자 벡터 양자화 모델 (코드북 크기 정보 사용)
+        item_vq (ResidualVectorQuantizer): 도서 벡터 양자화 모델
+        filename (str): 저장할 파일 이름
+    """
+    G = nx.Graph()
+    
+    # 1. 사용자 노드 추가
+    num_users = users_df.shape[0]
+    for i in range(num_users):
+        user_id = users_df.iloc[i].get("user_id", i+1)
+        G.add_node(f"user_{user_id}", type="user")
+    
+    # 2. 도서 노드 추가
+    num_books = books_df.shape[0]
+    for j in range(num_books):
+        book_id = books_df.iloc[j].get("book_id", j+1)
+        G.add_node(f"book_{book_id}", type="book")
+    
+    # 3. 사용자 latent factor 노드 추가 (각 코드북에 대해)
+    num_user_levels = len(user_vq.codebooks)
+    codebook_size_user = user_vq.codebook_size
+    for level in range(num_user_levels):
+        for idx in range(codebook_size_user):
+            G.add_node(f"user_factor_{level+1}_{idx}", type="user_factor")
+    
+    # 4. 도서 latent factor 노드 추가
+    num_item_levels = len(item_vq.codebooks)
+    codebook_size_item = item_vq.codebook_size
+    for level in range(num_item_levels):
+        for idx in range(codebook_size_item):
+            G.add_node(f"book_factor_{level+1}_{idx}", type="book_factor")
+    
+    # 5. 사용자-도서 (user_item) 에지 추가
+    if "user_item" in edge_indices:
+        ui_edges = edge_indices["user_item"].cpu().numpy()
+        num_edges = ui_edges.shape[1]
+        for k in range(num_edges):
+            # edge_indices가 1-indexed라고 가정
+            u_idx = int(ui_edges[0, k])
+            b_idx = int(ui_edges[1, k])
+            G.add_edge(f"user_{u_idx}", f"book_{b_idx}", relation="user-item")
+    
+    # 6. 사용자-사용자 factor 에지 추가
+    if "user_factor" in edge_indices:
+        uf_edges = edge_indices["user_factor"].cpu().numpy()
+        num_edges = uf_edges.shape[1]
+        for k in range(num_edges):
+            u_idx = int(uf_edges[0, k])    # 1-indexed 사용자
+            f_idx = int(uf_edges[1, k])    # offset 포함 factor index
+            level = f_idx // codebook_size_user + 1
+            idx_in_level = f_idx % codebook_size_user
+            G.add_edge(f"user_{u_idx}", f"user_factor_{level}_{idx_in_level}", relation="user-factor")
+    
+    # 7. 도서-도서 factor 에지 추가
+    if "item_factor" in edge_indices:
+        bf_edges = edge_indices["item_factor"].cpu().numpy()
+        num_edges = bf_edges.shape[1]
+        for k in range(num_edges):
+            b_idx = int(bf_edges[0, k])    # 1-indexed 도서
+            f_idx = int(bf_edges[1, k])    # offset 포함 factor index
+            level = f_idx // codebook_size_item + 1
+            idx_in_level = f_idx % codebook_size_item
+            G.add_edge(f"book_{b_idx}", f"book_factor_{level}_{idx_in_level}", relation="book-factor")
+    
+    # 노드별 색상 지정
+    color_map = {
+        "user": "lightblue",
+        "book": "lightgreen",
+        "user_factor": "orange",
+        "book_factor": "pink"
+    }
+    node_colors = [color_map.get(attr.get("type", ""), "gray") for n, attr in G.nodes(data=True)]
+    
+    # 레이아웃 계산 (spring layout)
+    pos = nx.spring_layout(G, seed=42)
+    
+    plt.figure(figsize=(12, 10))
+    nx.draw(G, pos, with_labels=True, node_color=node_colors, node_size=500, font_size=8)
+    plt.title("Full User-Item Graph with Latent Factors")
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.show()

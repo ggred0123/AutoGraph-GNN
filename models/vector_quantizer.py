@@ -1,122 +1,108 @@
-import torch 
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
 
 class ResidualVectorQuantizer(nn.Module):
-    """
-    잔차 양자화를 이용한 벡터 양자화 모듈입니다.
-    """
     def __init__(self, input_dim, hidden_dim, codebook_size, num_codebooks=3):
-        super(ResidualVectorQuantizer, self).__init__() # 부모 클래스의 생성자 호출
+        super(ResidualVectorQuantizer, self).__init__()
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+        self.codebook_size = codebook_size
+        self.num_codebooks = num_codebooks
         
-        self.input_dim = input_dim # 입력 차원
-        self.hidden_dim = hidden_dim # 인코더 출력 차원
-        self.codebook_size = codebook_size # 코드북 크기
-        self.num_codebooks = num_codebooks # 코드북 수
-        
-        self.encoder == nn.Sequential( # 인코더 정의
-            nn.Linear(input_dim, hidden_dim*2),
+        self.encoder = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim * 2),
             nn.ReLU(),
-            nn.Linear(hidden_dim*2, hidden_dim),
-          
+            nn.Linear(hidden_dim * 2, hidden_dim),
         )
-        self.decoder = nn.Sequential( # 디코더 정의
-            nn.Linear(hidden_dim, hidden_dim*2),
+        self.decoder = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim * 2),
             nn.ReLU(),
-            nn.Linear(hidden_dim*2, input_dim),
+            nn.Linear(hidden_dim * 2, input_dim),
         )
         
-        self.codebooks = nn.ParameterList([ # 코드북 정의
-            nn.Parameter(torch.randn(codebook_size, hidden_dim)) # 코드북 초기화
-            for _ in range(num_codebooks) # 코드북 수만큼 반복
+        self.codebooks = nn.ParameterList([
+            nn.Parameter(torch.randn(codebook_size, hidden_dim))
+            for _ in range(num_codebooks)
         ])
-    
+        
+        # 마지막 forward에서 계산한 인덱스를 저장할 속성을 초기화합니다.
+        self.last_indices = None
+
     def forward(self, x):
-        """
-        순방향 전파 함수
-        Args:
-            x (torch.Tensor): 입력 벡터
-            
-        Returns:
-            torch.Tensor: 양자화된 벡터
-        """
-        h = self.encoder(x) #인코더를 통해 히든 벡터 얻기
-        
+        h = self.encoder(x)
         residual = h.clone()
+        indices = []
+        codebook_vectors = []
+        for i in range(self.num_codebooks):
+            codebook = self.codebooks[i]
+            distances = torch.cdist(residual, codebook)
+            min_indices = torch.argmin(distances, dim=1)
+            indices.append(min_indices)
+            selected_vectors = codebook[min_indices]
+            codebook_vectors.append(selected_vectors)
+            residual = residual - selected_vectors
+        # 마지막 계산된 인덱스를 저장합니다.
+        self.last_indices = indices
         
-        indices = [] #각 코드북에서 가장 가까운 벡터의 인덱스를 저장할 리스트
-        codebook_vectors = [] #각 코드북에서 가장 가까운 벡터를 저장할 리스트
-        
-        for i in range(self.num_codebooks): # 순차적 양자화 수행
-            
-            codebook = self.codebooks[i] # 현재 코드북 선택
-            
-            distances = torch.cdist(residual, codebook) #코드북과 히든 벡터 간의 유클리드 거리 계산
-            
-            min_indices = torch.argmin(distances, dim =1) # 가장 가까운 벡터의 인덱스 찾기
-            
-            indices.append(min_indices) # 현재 코드북에서 가장 가까운 벡터의 인덱스 저장
-            
-            selected_vectors = codebook[min_indices] # 선택된 벡터 추출
-            codebook_vectors.append(selected_vectors) # 선택된 벡터 저장
-            
-            residual = residual - selected_vectors # 잔차 계산 update
-            
-        quantized = sum(codebook_vectors) # 모든 코드북에서 선택된 벡터들의 합
-        reconstructed = self.decoder(quantized) # 양자화된 벡터를 디코더에 통과시켜 재구성 벡터 얻기
-        
+        quantized = sum(codebook_vectors)
+        reconstructed = self.decoder(quantized)
         
         if self.training:
-            
-            rec_loss = F.mse_loss(reconstructed, x) # 재구성 오차 계산
-            
-            com_loss =0 #commitment loss를 각 레벨에 대해 계산
-            
+            rec_loss = F.mse_loss(reconstructed, x)
+            com_loss = 0
             for i in range(self.num_codebooks):
                 residual_i = h.clone() - sum(codebook_vectors[:i]) if i > 0 else h.clone()
-                selected_vectors_i = codebook_vectors[i] # 현재 코드북에서 선택된 벡터
-                
-                com_loss += F.mse_loss(residual_i.detach(), selected_vectors_i) # 잔차가 코드북 벡터에 가까워지도록
-                
-                com_loss += F.mse_loss(residual_i, selected_vectors_i.detach()) # 코드북 벡터가 잔차에 가까워지도록
-
-            loss = rec_loss + com_loss * 0.25 #commitment loss에 가중치 0.25 적용
+                selected_vectors_i = codebook_vectors[i]
+                com_loss += F.mse_loss(residual_i.detach(), selected_vectors_i)
+                com_loss += F.mse_loss(residual_i, selected_vectors_i.detach())
+            loss = rec_loss + com_loss * 0.25
         else:
-            loss  = None
+            loss = None
         return quantized, indices, reconstructed, loss
-    
-    @torch.no_grad() # 파라미터 업데이트 없이 인코딩 수행
-    def encode(self, x):
-        """
-        인코딩 함수
-        입력 벡터르 코드북 인덱스로 인코딩
-        """
-        h = self.encoder(x) # 인코더를 통해 히든 벡터 얻기
-        
-        residual = h.clone() # 잔차 초기화
-        
-        indices = [] # 각 코드북에서 가장 가까운 벡터의 인덱스를 저장할 리스트
-        
-        for i in range(self.num_codebooks): # 순차적 양자화 수행
-            codebook = self.codebooks[i] # 현재 코드북 선택
-            
-            distances = torch.cdist(residual, codebook) # 코드북과 히든 벡터 간의 유클리드 거리 계산
-            
-            min_indices = torch.argmin(distances, dim =1) # 가장 가까운 벡터의 인덱스 찾기
-            
-            indices.append(min_indices) # 현재 코드북에서 가장 가까운 벡터의 인덱스 저장
-            
-            selected_vectors = codebook[min_indices] # 선택된 벡터 추출
-            residual = residual - selected_vectors # 잔차 계산 update
-            
-        return indices
-    
 
+    def get_codebook_usage(self):
+        """
+        마지막 forward pass에서 각 코드북 레벨의 사용 현황을 계산합니다.
         
-            
-            
-        
-       
-        
-            
-        
+        Returns:
+            List[dict]: 각 레벨에 대한 사용 통계 (레벨, activation_ratio, effective_size)
+        """
+        if self.last_indices is None:
+            raise ValueError("No forward pass data available. Run forward() first.")
+        usage_stats = []
+        for i, indices in enumerate(self.last_indices):
+            unique_codes = torch.unique(indices)
+            effective_size = unique_codes.numel()
+            activation_ratio = effective_size / self.codebook_size
+            usage_stats.append({
+                'level': i + 1,
+                'activation_ratio': activation_ratio,
+                'effective_size': effective_size
+            })
+        return usage_stats
+
+    def visualize_codebooks(self, filename):
+        """
+        각 코드북을 2차원 공간으로 투영하여 시각화한 후, filename으로 저장합니다.
+        """
+        num_codebooks = len(self.codebooks)
+        hidden_dim = self.codebooks[0].shape[1]
+        pca = PCA(n_components=2)
+        plt.figure(figsize=(6 * num_codebooks, 6))
+        for i, codebook in enumerate(self.codebooks):
+            codebook_np = codebook.detach().cpu().numpy()  # (codebook_size, hidden_dim)
+            if hidden_dim > 2:
+                codebook_2d = pca.fit_transform(codebook_np)
+            else:
+                codebook_2d = codebook_np
+            plt.subplot(1, num_codebooks, i + 1)
+            plt.scatter(codebook_2d[:, 0], codebook_2d[:, 1], s=40, alpha=0.7)
+            plt.title(f"Codebook Level {i+1}")
+            plt.xlabel("PC1")
+            plt.ylabel("PC2")
+        plt.tight_layout()
+        plt.savefig(filename)
+        plt.close()

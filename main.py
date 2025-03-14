@@ -1,19 +1,23 @@
 import os
+os.environ["TRANSFORMERS_NO_TF"] = "1"
 import torch
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+plt.rcParams["font.family"] = "Malgun Gothic"
+plt.rcParams["axes.unicode_minus"] = False    
 from tqdm import tqdm
 
 # 앞서 작성한 모듈 임포트
-from data.dataset import generate_book_dataset, generate_user_dataset, save_datasets
-from models.vector_quantizer import BookSemanticVectorGenerator
+
+from models.semantic_generator import BookSemanticVectorGenerator
 from models.vector_quantizer import ResidualVectorQuantizer
-from pipeline import AutoGraphPipeline
+from pipeline import AutoGraphPipeline  
 from configs.default_config import get_config
 from models.graph_constructor import AutoGraphConstructor
-from models.metapath_gnn import MetapathGNN
+from models.metapath_gnn import MetaPathGNN
 from models.recommender import AutoGraphRecommender
+from utils.visualization import visualize_residual_quantization, visualize_full_graph
 
 def main():
     """
@@ -21,10 +25,7 @@ def main():
     """
     print("=== AutoGraph 기반 도서 추천 시스템 ===")
     
-    # 1. 가상 데이터셋 생성
-    print("\n1. 가상 데이터셋 생성 중...")
-    num_books = 50  # 논문 실험에는 더 많은 데이터가 필요하지만 데모 목적으로 적은 수 사용
-    num_users = 20
+ 
     
     # 이미 데이터가 있으면 로드, 없으면 생성
     data_dir = "./data"
@@ -33,15 +34,6 @@ def main():
         books_df = pd.read_csv(f"{data_dir}/books.csv")
         users_df = pd.read_csv(f"{data_dir}/users.csv")
         interactions_df = pd.read_csv(f"{data_dir}/interactions.csv")
-    else:
-        print(f"{num_books}개의 가상 도서 데이터를 생성합니다...")
-        books_df = generate_book_dataset(num_books)
-        
-        print(f"{num_users}명의 가상 사용자 데이터를 생성합니다...")
-        users_df, interactions_df = generate_user_dataset(num_users, num_books, avg_books_per_user=8)
-        
-        # 데이터셋 저장
-        save_datasets(books_df, users_df, interactions_df, output_dir=data_dir)
     
     # 데이터셋 정보 출력
     print("\n=== 데이터셋 정보 ===")
@@ -51,7 +43,7 @@ def main():
     
     # 2. 트랜스포머 모델로 의미 벡터 생성
     print("\n2. 트랜스포머 모델로 책 의미 벡터 생성 중...")
-    semantic_generator = BookSemanticVectorGenerator()
+    semantic_generator = BookSemanticVectorGenerator("sentence-transformers/all-MiniLM-L6-v2")
     
     # 책 임베딩 생성
     book_vectors = semantic_generator.generate_book_embeddings(
@@ -146,6 +138,12 @@ def main():
     print("\n4. 코드북 분석 중...")
     book_vq.visualize_codebooks("book_codebooks.png")
     user_vq.visualize_codebooks("user_codebooks.png")
+
+    visualize_residual_quantization(input_dim=book_vectors.shape[1],
+                                hidden_dim=64,
+                                codebook_size=32,
+                                num_codebooks=3,
+                                num_samples=100)
     
     # 코드북 사용 통계
     book_usage_stats = book_vq.get_codebook_usage()
@@ -217,7 +215,7 @@ def main():
     # 7. 그래프 구성
     print("\n7. 그래프 구성 중...")
     # 그래프 구성기 임포트 (graph_constructor.py 구현 필요)
-    from graph_constructor import AutoGraphConstructor
+    from models.graph_constructor import AutoGraphConstructor
 
     # 그래프 구성기 초기화
     graph_constructor = AutoGraphConstructor(book_vq, user_vq)
@@ -233,27 +231,36 @@ def main():
     # 메타패스 기반 GNN 모듈 임포트 (metapath_gnn.py 구현 필요)
 
     # 메타패스 GNN 초기화
-    metapath_gnn = MetapathGNN(
+    metapath_gnn = MetaPathGNN(
         user_dim=user_vectors.shape[1],
         item_dim=book_vectors.shape[1],
         factor_dim=64,  # hidden_dim과 동일
         hidden_dim=64,
         num_heads=4
     )
+    node_features, edge_indices = graph_constructor.construct_graph(
+    book_vectors, user_vectors, 
+    list(zip(interactions_df['user_id'], interactions_df['book_id']))
+)
+    
 
     # 메타패스 에지 준비
-    metapath_edge_indices = graph_constructor.prepare_metapath_edges(graph_data['edge_indices'])
+    metapath_edge_indices = graph_constructor.prepare_metapath_edges(edge_indices)
+
+    # 사용자-책 그래프 시각화 (NetworkX 사용)
+    visualize_full_graph(node_features, edge_indices, users_df, books_df, user_vq, book_vq, filename="full_user_item_graph.png")
+
 
     # 메시지 전파 수행
     book_graph_emb, user_graph_emb = metapath_gnn(
-        graph_data['node_features'], 
+        node_features, 
         metapath_edge_indices
     )
 
     # 9. 추천 생성
     print("\n9. 추천 생결과 생성 중...")
     # 추천 모델 임포트 (recommender.py 구현 필요)
-    from recommender import AutoGraphRecommender
+    from models.recommender import AutoGraphRecommender
 
     # 추천 모델 초기화
     recommender = AutoGraphRecommender(
@@ -269,18 +276,17 @@ def main():
     test_user_vector = user_vectors[test_user_idx].unsqueeze(0)
     test_user_graph_emb = user_graph_emb[test_user_idx].unsqueeze(0)
 
-    # 모든 책에 대한 점수 계산
+    # 모든 책에 대한 점수 계산 (여기서 book_graph_emb 사용)
     scores = []
     for i in range(len(books_df)):
         book_vector = book_vectors[i].unsqueeze(0)
-        book_graph_emb = book_graph_emb[i].unsqueeze(0)
+        book_graph_emb_i = book_graph_emb[i].unsqueeze(0)
         
-        # 점수 계산
         score = recommender(
             test_user_vector, 
             book_vector, 
             test_user_graph_emb, 
-            book_graph_emb
+            book_graph_emb_i
         )
         scores.append(score.item())
 

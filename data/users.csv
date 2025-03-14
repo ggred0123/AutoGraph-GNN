@@ -1,0 +1,6 @@
+user_id,age,gender,favorite_genres
+1,29,Male,"[""Mystery"", ""Sci-Fi""]"
+2,24,Female,"[""Fiction"", ""Sci-Fi""]"
+3,29,Female,"[""Fiction"", ""Fantasy""]"
+4,30,Female,"[""Fiction"", ""Non-Fiction""]"
+5,47,Male,"[""Sci-Fi"", ""Mystery""]"

@@ -60,6 +60,26 @@ class AutoGraphConstructor:
         edge_index['item_factor'] = torch.tensor(item_factor_edges).t() # 아이템 인코더 코드북 에지 저장
         
         return node_features, edge_index
+    
+    def prepare_metapath_edges(self, edge_indices):
+        """
+        메타패스 에지를 준비합니다.
+        AutoGraphPipeline에서는 metapath_edge_indices 딕셔너리를 아래와 같이 구성합니다.
+        
+        Returns:
+            dict: {
+                'u_q_u': 사용자 코드북 에지,
+                'i_q_i': 아이템 코드북 에지,
+                'u_i': 사용자-아이템 상호작용 에지,
+                'i_u': 아이템-사용자 상호작용 에지 (여기서는 대칭으로 설정)
+            }
+        """
+        metapath_edge_indices = {}
+        metapath_edge_indices['u_q_u'] = edge_indices.get('user_factor')
+        metapath_edge_indices['i_q_i'] = edge_indices.get('item_factor')
+        metapath_edge_indices['u_i'] = edge_indices.get('user_item')
+        metapath_edge_indices['i_u'] = edge_indices.get('user_item')  # 필요에 따라 전치 가능
+        return metapath_edge_indices
         
         
         
