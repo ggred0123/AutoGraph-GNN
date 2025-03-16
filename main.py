@@ -4,8 +4,8 @@ import torch
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-plt.rcParams["font.family"] = "Malgun Gothic"
-plt.rcParams["axes.unicode_minus"] = False    
+plt.rcParams["font.family"] = "Apple SD Gothic Neo"  # 또는 "NanumGothic"
+plt.rcParams["axes.unicode_minus"] = False  # 마이너스 기호 깨짐 방지
 from tqdm import tqdm
 
 # 앞서 작성한 모듈 임포트
@@ -271,7 +271,7 @@ def main():
     )
 
     # 테스트 사용자에 대한 추천 생성
-    test_user_id = 1  # 첫 번째 사용자
+    test_user_id = 2  # 첫 번째 사용자
     test_user_idx = test_user_id - 1
     test_user_vector = user_vectors[test_user_idx].unsqueeze(0)
     test_user_graph_emb = user_graph_emb[test_user_idx].unsqueeze(0)
