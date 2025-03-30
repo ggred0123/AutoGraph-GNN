@@ -1,16 +1,21 @@
 book_id,title,author,genre,summary
-1,Book 1,Author B,Sci-Fi,This book is a fascinating tale of technology. It delves into humanity and provides deep insights.
-2,Book 2,Author D,Fiction,This book is a breathtaking tale of mystery. It delves into culture and provides unexpected twists.
-3,Book 3,Author C,Non-Fiction,This book is a captivating tale of technology. It delves into humanity and provides a compelling narrative.
-4,Book 4,Author B,Fantasy,This book is a fascinating tale of war. It delves into culture and provides a compelling narrative.
-5,Book 5,Author D,Non-Fiction,This book is a breathtaking tale of love. It delves into freedom and provides an emotional journey.
-6,Book 6,Author B,Fantasy,This book is a intriguing tale of war. It delves into freedom and provides a compelling narrative.
-7,Book 7,Author C,Non-Fiction,This book is a fascinating tale of friendship. It delves into humanity and provides deep insights.
-8,Book 8,Author C,Sci-Fi,This book is a amazing tale of adventure. It delves into innovation and provides a compelling narrative.
-9,Book 9,Author B,Fiction,This book is a intriguing tale of betrayal. It delves into society and provides deep insights.
-10,Book 10,Author D,Sci-Fi,This book is a captivating tale of destiny. It delves into freedom and provides deep insights.
-11,Book 11,Author A,Fiction,This book is a amazing tale of love. It delves into society and provides an emotional journey.
-12,Book 12,Author C,Fiction,This book is a fascinating tale of magic. It delves into society and provides unexpected twists.
-13,Book 13,Author A,Mystery,This book is a captivating tale of betrayal. It delves into freedom and provides a unique perspective.
-14,Book 14,Author A,Fiction,This book is a breathtaking tale of betrayal. It delves into society and provides unexpected twists.
-15,Book 15,Author B,Fantasy,This book is a intriguing tale of war. It delves into humanity and provides a compelling narrative.
+1,The Silent Forest,Emily Harrington,Mystery,"A thrilling mystery set in a remote forest where every secret comes to light as a detective unravels hidden truths."
+2,Chronicles of the Lost City,David Anderson,Adventure,"An epic adventure through forgotten ruins, where ancient civilizations and modern explorers collide."
+3,Stars Beyond the Horizon,Michael Carter,Science Fiction,"A futuristic journey into space, exploring uncharted galaxies and the mysteries of alien life."
+4,Whispers of the Past,Sophie Martinez,Historical Fiction,"A tale of love and loss set during turbulent times in a war-torn country, revealing personal stories intertwined with history."
+5,The Enchanted Garden,Lila Thompson,Fantasy,"Magic and wonder blossom in an enchanted garden where mythical creatures and brave adventurers come together."
+6,The Last Guardian,James Wilson,Fantasy,"An epic quest to protect an ancient relic that holds the power to change the fate of the world."
+7,City of Shadows,Rebecca Lee,Thriller,"A gritty thriller following a detective's journey through the underbelly of a sprawling metropolis riddled with corruption."
+8,Melodies of the Heart,Anthony Bennett,Romance,"A heartwarming story about love, loss, and rediscovering passion through music and unexpected encounters."
+9,Echoes in the Wind,Olivia Brooks,Drama,"A moving drama that explores the complex relationships of a family torn apart by secrets and past betrayals."
+10,Beyond the Mirror,Alexander Reed,Fantasy,"A young woman discovers a portal to a parallel world where she must battle dark forces to reclaim her destiny."
+11,The Infinite Labyrinth,Natalie Graham,Mystery,"A puzzling mystery that takes place within a labyrinthine mansion filled with hidden rooms and cryptic clues."
+12,The Art of Deception,Charles Murray,Thriller,"A suspenseful tale of espionage and double-crosses, where nothing is as it seems and betrayal lurks around every corner."
+13,Dawn of Tomorrow,Victoria Chen,Science Fiction,"A visionary novel exploring the dawn of a new era, where technology and humanity intersect in unforeseen ways."
+14,Tides of Destiny,William Garcia,Historical Fiction,"A sweeping historical saga following generations of a family whose fate is intertwined with the tides of change."
+15,The Forgotten Realm,Sophia Patel,Fantasy,"A magical journey into a forgotten realm, where ancient legends awaken and destiny calls for a hero."
+16,Whirlwind,Marcus Sullivan,Action,"A fast-paced action novel that plunges readers into a world of high-stakes chases and daring escapades."
+17,Beneath the Surface,Hannah Kim,Psychological Thriller,"A chilling psychological thriller that delves deep into the hidden fears and secrets beneath the facade of everyday life."
+18,Shattered Dreams,George Murphy,Drama,"A poignant exploration of shattered dreams and the resilience of the human spirit in the face of adversity."
+19,Rise of the Phoenix,Ella Scott,Adventure,"A stirring adventure that follows a band of unlikely heroes as they rise against tyranny to reclaim their freedom."
+20,Eternal Whispers,Daniel Lee,Romance,"A tender romance that weaves the timeless theme of love with the echoes of the past in an unforgettable narrative."

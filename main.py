@@ -64,18 +64,19 @@ def main():
     book_vq = ResidualVectorQuantizer(
         input_dim=book_vectors.shape[1],  # 의미 벡터 차원
         hidden_dim=64,                   # 내부 표현 차원
-        codebook_size=32,                # 각 코드북 크기
+        codebook_size=8,                # 각 코드북 크기
         num_codebooks=3                  # 코드북 레벨 수
     )
+    ResidualVectorQuantizer.kmeans_initialize_vq(book_vq, book_vectors, device='cpu')
     
     # 사용자 벡터 양자화 모델 설정
     user_vq = ResidualVectorQuantizer(
         input_dim=user_vectors.shape[1],  # 의미 벡터 차원
         hidden_dim=64,                   # 내부 표현 차원
-        codebook_size=16,                # 각 코드북 크기 (사용자는 더 적은 수로 설정)
+        codebook_size=8,                # 각 코드북 크기 (사용자는 더 적은 수로 설정)
         num_codebooks=2                  # 코드북 레벨 수
     )
-    
+    ResidualVectorQuantizer.kmeans_initialize_vq(user_vq, user_vectors, device='cpu')
     # 학습 루프
     print("벡터 양자화 모델 학습 중...")
     num_epochs = 100

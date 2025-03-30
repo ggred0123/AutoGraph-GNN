@@ -1,16 +1,21 @@
 level_1_factor,level_2_factor,level_3_factor,book_id,title,genre
-28,25,27,1,Book 1,Sci-Fi
-28,25,27,2,Book 2,Fiction
-28,25,27,3,Book 3,Non-Fiction
-28,25,27,4,Book 4,Fantasy
-28,25,27,5,Book 5,Non-Fiction
-28,25,27,6,Book 6,Fantasy
-28,25,27,7,Book 7,Non-Fiction
-28,25,27,8,Book 8,Sci-Fi
-28,25,27,9,Book 9,Fiction
-28,25,27,10,Book 10,Sci-Fi
-28,25,27,11,Book 11,Fiction
-28,25,27,12,Book 12,Fiction
-28,25,27,13,Book 13,Mystery
-28,25,27,14,Book 14,Fiction
-28,25,27,15,Book 15,Fantasy
+2,1,6,1,The Silent Forest,Mystery
+6,1,6,2,Chronicles of the Lost City,Adventure
+6,7,6,3,Stars Beyond the Horizon,Science Fiction
+0,1,6,4,Whispers of the Past,Historical Fiction
+1,3,6,5,The Enchanted Garden,Fantasy
+1,1,6,6,The Last Guardian,Fantasy
+4,5,6,7,City of Shadows,Thriller
+5,1,6,8,Melodies of the Heart,Romance
+4,6,6,9,Echoes in the Wind,Drama
+1,4,6,10,Beyond the Mirror,Fantasy
+2,5,6,11,The Infinite Labyrinth,Mystery
+7,0,6,12,The Art of Deception,Thriller
+1,0,6,13,Dawn of Tomorrow,Science Fiction
+3,1,6,14,Tides of Destiny,Historical Fiction
+3,5,6,15,The Forgotten Realm,Fantasy
+6,1,6,16,Whirlwind,Action
+7,1,6,17,Beneath the Surface,Psychological Thriller
+0,0,6,18,Shattered Dreams,Drama
+1,2,6,19,Rise of the Phoenix,Adventure
+6,1,6,20,Eternal Whispers,Romance

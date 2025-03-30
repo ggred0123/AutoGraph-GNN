@@ -3,6 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+import numpy as np
+
+
 
 class ResidualVectorQuantizer(nn.Module):
     def __init__(self, input_dim, hidden_dim, codebook_size, num_codebooks=3):
@@ -58,7 +62,7 @@ class ResidualVectorQuantizer(nn.Module):
                 selected_vectors_i = codebook_vectors[i]
                 com_loss += F.mse_loss(residual_i.detach(), selected_vectors_i)
                 com_loss += F.mse_loss(residual_i, selected_vectors_i.detach())
-            loss = rec_loss + com_loss * 0.25
+            loss = rec_loss + com_loss * 0.5
         else:
             loss = None
         return quantized, indices, reconstructed, loss
@@ -106,3 +110,52 @@ class ResidualVectorQuantizer(nn.Module):
         plt.tight_layout()
         plt.savefig(filename)
         plt.close()
+
+    def kmeans_initialize_vq(model, data, device=None):
+        """
+        모델의 각 레벨에 대해 encoder 출력의 residual을 kmeans로 클러스터링하여
+        codebook을 초기화합니다.
+        
+        만약 반환된 클러스터 수(actual_clusters)가 model.codebook_size(desired_clusters)보다 작으면,
+        부족한 centroids는 반복하여 패딩(padding)합니다.
+        """
+        if device is None:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+        model.eval()  # 초기화 시 eval 모드
+        with torch.no_grad():
+            h = model.encoder(data.to(device))
+            residual = h.clone()
+            
+            for i in range(model.num_codebooks):
+                X = residual.cpu().numpy()
+                n_samples = X.shape[0]
+                desired_clusters = model.codebook_size
+                # n_clusters는 단순히 min(desired_clusters, n_samples)로 설정
+                n_clusters = desired_clusters if n_samples >= desired_clusters else n_samples
+                
+                kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=42)
+                kmeans.fit(X)
+                centroids = kmeans.cluster_centers_  # shape: (actual_clusters, hidden_dim)
+                
+                # 실제 클러스터 수 확인 후, 부족한 경우 패딩
+                actual_clusters = centroids.shape[0]
+                if actual_clusters < desired_clusters:
+                    pad_size = desired_clusters - actual_clusters
+                    # 예시로 centroids의 앞부분을 반복하여 패딩합니다.
+                    pad_centroids = centroids[:pad_size]
+                    centroids = np.vstack([centroids, pad_centroids])
+                
+                assert centroids.shape[0] == desired_clusters, f"Expected {desired_clusters} centroids, got {centroids.shape[0]}"
+                
+                # 해당 레벨의 codebook을 kmeans 결과로 초기화
+                model.codebooks[i].copy_(torch.tensor(centroids, 
+                                                        dtype=model.codebooks[i].dtype, 
+                                                        device=model.codebooks[i].device))
+                
+                # 잔차 업데이트: 각 샘플에 대해 kmeans 할당 결과에 따라
+                assignments = kmeans.labels_
+                centroids_tensor = torch.tensor(centroids, device=residual.device, dtype=residual.dtype)
+                assignments_tensor = torch.tensor(assignments, device=residual.device)
+                selected = centroids_tensor[assignments_tensor]
+                residual = residual - selected
+        model.train()  # 초기화 후 train 모드로 전환
