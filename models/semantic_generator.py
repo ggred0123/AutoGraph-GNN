@@ -136,6 +136,7 @@ class BookSemanticVectorGenerator:
             else:
                 user_histories[uid] = [title]
         
+        
         # DataFrame을 dict 목록으로 변환
         user_profiles_list = user_profiles.to_dict('records')
         

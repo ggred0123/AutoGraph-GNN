@@ -18,6 +18,7 @@ from models.graph_constructor import AutoGraphConstructor
 from models.metapath_gnn import MetaPathGNN
 from models.recommender import AutoGraphRecommender
 from utils.visualization import visualize_residual_quantization, visualize_full_graph
+from models.like_weight_processor import LikesWeightProcessor
 
 def main():
     """
@@ -34,7 +35,7 @@ def main():
         books_df = pd.read_csv(f"{data_dir}/books.csv")
         users_df = pd.read_csv(f"{data_dir}/users.csv")
         interactions_df = pd.read_csv(f"{data_dir}/interactions.csv")
-    
+        likes_df = pd.read_csv(f"{data_dir}/likes.csv")
     # 데이터셋 정보 출력
     print("\n=== 데이터셋 정보 ===")
     print(f"도서 수: {len(books_df)}")
@@ -60,6 +61,7 @@ def main():
     # 3. 벡터 양자화를 통한 잠재 요인 추출
     print("\n3. 벡터 양자화로 잠재 요인 추출 중...")
     
+
     # 책 벡터 양자화 모델 설정
     book_vq = ResidualVectorQuantizer(
         input_dim=book_vectors.shape[1],  # 의미 벡터 차원
@@ -77,6 +79,8 @@ def main():
         num_codebooks=2                  # 코드북 레벨 수
     )
     ResidualVectorQuantizer.kmeans_initialize_vq(user_vq, user_vectors, device='cpu')
+    
+    
     # 학습 루프
     print("벡터 양자화 모델 학습 중...")
     num_epochs = 100
@@ -259,7 +263,7 @@ def main():
     )
 
     # 9. 추천 생성
-    print("\n9. 추천 생결과 생성 중...")
+    print("\n9. 추천 결과 생성 중...")
     # 추천 모델 임포트 (recommender.py 구현 필요)
     from models.recommender import AutoGraphRecommender
 
