@@ -21,9 +21,15 @@ from models.recommender import AutoGraphRecommender
 from utils.visualization import visualize_residual_quantization, visualize_full_graph
 from models.like_weight_processor import LikesWeightProcessor
 
-def main():
+def main(test_user_id=None):
     """
     AutoGraph를 이용한 도서 추천 시스템 구현 메인 함수
+    
+    Args:
+        test_user_id (Any, optional): 테스트할 사용자 ID. None인 경우 첫 번째 사용자를 사용함.
+    
+    Returns:
+        dict: 처리된 데이터 및 모델
     """
     print("=== AutoGraph 기반 도서 추천 시스템 ===")
     
@@ -397,10 +403,19 @@ def main():
     )
 
     # 테스트 사용자에 대한 추천 생성
-    # 첫 번째 사용자 ID 선택
+    # 사용자 ID 선택
     if len(users_df) > 0:
-        test_user_id = users_df['user_id'].iloc[0]  # 데이터프레임의 첫 번째 사용자 ID 사용
-        test_user_idx = 0  # 첫 번째 사용자의 인덱스
+        # 인자로 전달된 test_user_id가 있고, 유효한 경우 해당 사용자 사용
+        if test_user_id is not None and test_user_id in users_df['user_id'].values:
+            print(f"입력된 사용자 ID {test_user_id}로 추천을 생성합니다.")
+            # users_df에서 해당 ID의 인덱스 찾기
+            test_user_idx = users_df.index[users_df['user_id'] == test_user_id].tolist()[0]
+        else:
+            # 입력된 ID가 없거나 유효하지 않은 경우 첫 번째 사용자 사용
+            if test_user_id is not None:
+                print(f"입력된 사용자 ID {test_user_id}가 유효하지 않습니다. 첫 번째 사용자로 대체합니다.")
+            test_user_id = users_df['user_id'].iloc[0]  # 데이터프레임의 첫 번째 사용자 ID 사용
+            test_user_idx = 0  # 첫 번째 사용자의 인덱스
         
         # NumPy 배열을 PyTorch 텐서로 변환
         if isinstance(user_vectors, np.ndarray):
@@ -505,6 +520,12 @@ if __name__ == "__main__":
     np.random.seed(42)
     torch.manual_seed(42)
     
+    # 명령줄 인자 파싱
+    import argparse
+    parser = argparse.ArgumentParser(description='AutoGraph 기반 도서 추천 시스템')
+    parser.add_argument('--user_id', type=str, help='테스트할 사용자 ID', default=None)
+    args = parser.parse_args()
+    
     # matplotlib 설정 (Agg 백엔드 사용)
     import matplotlib
     matplotlib.use('Agg')  # GUI 없이 이미지 파일로 저장
@@ -513,5 +534,17 @@ if __name__ == "__main__":
     plt.rcParams["axes.unicode_minus"] = False  # 마이너스 기호 깨짐 방지
     import seaborn as sns
     
+    # test_user_id가 문자열이 아닌 경우에도 잘 동작하도록 변환
+    user_id = None
+    if args.user_id is not None:
+        try:
+            # 정수인 경우 정수로 변환
+            if args.user_id.isdigit():
+                user_id = int(args.user_id)
+            else:
+                user_id = args.user_id  # 문자열 그대로 유지
+        except:
+            user_id = args.user_id  # 문자열 그대로 유지
+    
     # 메인 함수 실행
-    main()
+    main(user_id)
