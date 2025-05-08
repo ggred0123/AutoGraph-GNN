@@ -21,7 +21,7 @@ from models.recommender import AutoGraphRecommender
 from utils.visualization import visualize_residual_quantization, visualize_full_graph
 from models.like_weight_processor import LikesWeightProcessor
 
-def main(test_user_id=None):
+def main(user_id=None):
     """
     AutoGraph를 이용한 도서 추천 시스템 구현 메인 함수
     
