@@ -36,6 +36,10 @@ class ResidualVectorQuantizer(nn.Module):
         self.last_indices = None
 
     def forward(self, x):
+        # NumPy 배열이면 PyTorch 텐서로 변환
+        if isinstance(x, np.ndarray):
+            x = torch.tensor(x, dtype=torch.float32)
+            
         h = self.encoder(x)
         residual = h.clone()
         indices = []
@@ -111,6 +115,7 @@ class ResidualVectorQuantizer(nn.Module):
         plt.savefig(filename)
         plt.close()
 
+    @staticmethod
     def kmeans_initialize_vq(model, data, device=None):
         """
         모델의 각 레벨에 대해 encoder 출력의 residual을 kmeans로 클러스터링하여
@@ -123,6 +128,10 @@ class ResidualVectorQuantizer(nn.Module):
             device = "cuda" if torch.cuda.is_available() else "cpu"
         model.eval()  # 초기화 시 eval 모드
         with torch.no_grad():
+            # NumPy 배열이면 PyTorch 텐서로 변환
+            if isinstance(data, np.ndarray):
+                data = torch.tensor(data, dtype=torch.float32)
+            
             h = model.encoder(data.to(device))
             residual = h.clone()
             

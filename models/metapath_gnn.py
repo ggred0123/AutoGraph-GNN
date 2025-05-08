@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 from torch_geometric.nn import GATConv
 from sentence_transformers import SentenceTransformer
 
@@ -29,11 +30,31 @@ class MetaPathGNN(nn.Module):
         self.gat_i_u = GATConv(hidden_dim * num_heads, hidden_dim, heads=num_heads)
     
     def forward(self, node_features, metapath_edge_indices):
+        # NumPy 배열을 PyTorch 텐서로 변환
+        node_features_tensor = {}
+        for key, value in node_features.items():
+            if key == 'user' or key == 'item':
+                if isinstance(value, np.ndarray):
+                    node_features_tensor[key] = torch.tensor(value, dtype=torch.float32)
+                else:
+                    node_features_tensor[key] = value
+            elif key == 'user_factor' or key == 'item_factor':
+                # 리스트인 경우 각 요소를 변환
+                processed_values = []
+                for level_emb in value:
+                    if isinstance(level_emb, np.ndarray):
+                        processed_values.append(torch.tensor(level_emb, dtype=torch.float32))
+                    else:
+                        processed_values.append(level_emb)
+                node_features_tensor[key] = processed_values
+            else:
+                node_features_tensor[key] = value
+        
         # 노드 임베딩 투영
-        user_emb = self.user_proj(node_features['user'])
-        item_emb = self.item_proj(node_features['item'])
-        user_factor_embs = [self.user_factor_proj(level_emb) for level_emb in node_features['user_factor']]
-        item_factor_embs = [self.item_factor_proj(level_emb) for level_emb in node_features['item_factor']]
+        user_emb = self.user_proj(node_features_tensor['user'])
+        item_emb = self.item_proj(node_features_tensor['item'])
+        user_factor_embs = [self.user_factor_proj(level_emb) for level_emb in node_features_tensor['user_factor']]
+        item_factor_embs = [self.item_factor_proj(level_emb) for level_emb in node_features_tensor['item_factor']]
         
         # 모든 임베딩을 row-wise로 결합
         all_emb = torch.cat([user_emb, item_emb] + user_factor_embs + item_factor_embs, dim=0)

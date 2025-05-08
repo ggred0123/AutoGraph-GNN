@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 class AutoGraphConstructor:
     """
@@ -19,20 +20,33 @@ class AutoGraphConstructor:
         """
         그래프 생성 함수
         Args:
-            user_vectors (torch.Tensor): 사용자 벡터 텐서
-            item_vectors (torch.Tensor): 아이템 벡터 텐서
-            interactions (torch.Tensor): 사용자 - 아이템 상호작용 정보 ( user_id, item_id) 쌍의 리스트
+            user_vectors (torch.Tensor or numpy.ndarray): 사용자 벡터 텐서 또는 NumPy 배열
+            item_vectors (torch.Tensor or numpy.ndarray): 아이템 벡터 텐서 또는 NumPy 배열
+            interactions (list): 사용자 - 아이템 상호작용 정보 ( user_id, item_id) 쌍의 리스트
             
         Returns:
             노드 특성, 에지 인덱스( 유형별)
         """
         
+        # NumPy 배열을 PyTorch 텐서로 변환
+        if isinstance(user_vectors, np.ndarray):
+            user_vectors_tensor = torch.tensor(user_vectors, dtype=torch.float32)
+        else:
+            user_vectors_tensor = user_vectors
+            
+        if isinstance(item_vectors, np.ndarray):
+            item_vectors_tensor = torch.tensor(item_vectors, dtype=torch.float32)
+        else:
+            item_vectors_tensor = item_vectors
+        
         user_quantized, user_indices, _ , _ = self.user_vq(user_vectors) # 사용자 벡터 양자화
         item_quantized, item_indices, _ , _ = self.item_vq(item_vectors) # 아이템 벡터 양자화
         
         node_features = {} # 노드 특성 저장
-        node_features['user'] = user_vectors # 사용자 벡터 저장
-        node_features['item'] = item_vectors # 아이템 벡터 저장
+        
+        # PyTorch 텐서로 저장
+        node_features['user'] = user_vectors_tensor
+        node_features['item'] = item_vectors_tensor
         
         user_factor_embeddings = [cb.clone() for cb in self.user_vq.codebooks] # 사용자 인코더 코드북 복사
         item_factor_embeddings = [cb.clone() for cb in self.item_vq.codebooks] # 아이템 인코더 코드북 복사
