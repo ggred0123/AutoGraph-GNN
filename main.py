@@ -10,6 +10,9 @@ from tqdm import tqdm
 
 # 앞서 작성한 모듈 임포트
 
+
+
+
 from models.semantic_generator import BookSemanticVectorGenerator
 from models.vector_quantizer import ResidualVectorQuantizer
 from pipeline import AutoGraphPipeline  
@@ -35,7 +38,37 @@ def main():
         books_df = pd.read_csv(f"{data_dir}/books.csv")
         users_df = pd.read_csv(f"{data_dir}/users.csv")
         interactions_df = pd.read_csv(f"{data_dir}/interactions.csv")
-        likes_df = pd.read_csv(f"{data_dir}/likes.csv")
+        
+        # 좋아요 데이터를 API에서 가져오기
+        print("API에서 좋아요 데이터를 가져오는 중...")
+        import requests
+        
+        try:
+            response = requests.get("https://flik-919620445413.asia-northeast1.run.app/users")
+            response.raise_for_status()  # 에러 체크
+            users_data = response.json()
+            
+            # API 결과를 likes_df 형식으로 변환
+            likes_list = []
+            for user in users_data:
+                user_id = user["id"]
+                for book_id in user["likedBookIds"]:
+                    likes_list.append({"user_id": user_id, "book_id": book_id})
+            
+            likes_df = pd.DataFrame(likes_list)
+            print(f"API에서 {len(likes_df)}개의 좋아요 데이터를 가져왔습니다.")
+            
+            # 디버깅용 출력
+            if likes_df.empty:
+                print("경고: 가져온 좋아요 데이터가 없습니다!")
+            else:
+                print("좋아요 데이터 샘플:")
+                print(likes_df.head())
+                
+        except Exception as e:
+            print(f"API 호출 중 오류 발생: {e}")
+            print("로컬 likes.csv 파일을 대신 사용합니다.")
+            likes_df = pd.read_csv(f"{data_dir}/likes.csv")
     # 데이터셋 정보 출력
     print("\n=== 데이터셋 정보 ===")
     print(f"도서 수: {len(books_df)}")
@@ -57,6 +90,12 @@ def main():
         users_df, interactions_df, books_df, method='weighted', batch_size=8
     )
     print(f"사용자 의미 벡터 형태: {user_vectors.shape}")
+
+    print(likes_list)
+    
+    like_weight_processor = LikesWeightProcessor(alpha=0.7)
+    book_vectors, user_vectors = like_weight_processor.apply_likes_weights(book_vectors, user_vectors, likes_df)
+    
     
     # 3. 벡터 양자화를 통한 잠재 요인 추출
     print("\n3. 벡터 양자화로 잠재 요인 추출 중...")
@@ -71,6 +110,7 @@ def main():
     )
     ResidualVectorQuantizer.kmeans_initialize_vq(book_vq, book_vectors, device='cpu')
     
+    print()
     # 사용자 벡터 양자화 모델 설정
     user_vq = ResidualVectorQuantizer(
         input_dim=user_vectors.shape[1],  # 의미 벡터 차원

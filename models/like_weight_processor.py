@@ -15,17 +15,17 @@ class LikesWeightProcessor:
         """
         self.alpha = alpha
         
-    def apply_likes_weights(self, user_vectors, book_vectors, likes_df):
+    def apply_likes_weights(self, book_vectors, user_vectors, likes_df):
         """
         좋아요 데이터를 기존 임베딩에 가중치로 적용
         
         Args:
-            user_vectors (torch.Tensor): 원본 사용자 임베딩 벡터
             book_vectors (torch.Tensor): 원본 책 임베딩 벡터
+            user_vectors (torch.Tensor): 원본 사용자 임베딩 벡터
             likes_df (pd.DataFrame): 좋아요 데이터 (user_id, book_id 컬럼 포함)
             
         Returns:
-            tuple: (가중치 적용된 사용자 임베딩, 가중치 적용된 책 임베딩)
+            tuple: (가중치 적용된 책 임베딩, 가중치 적용된 사용자 임베딩)
         """
         # 임베딩 복사 (원본 변경 방지)
         weighted_user_vectors = user_vectors.clone()
@@ -79,4 +79,4 @@ class LikesWeightProcessor:
             except Exception as e:
                 print(f"책 {book_id} 처리 중 오류: {e}")
         
-        return weighted_user_vectors, weighted_book_vectors
+        return weighted_book_vectors, weighted_user_vectors
